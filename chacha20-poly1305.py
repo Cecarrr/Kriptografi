@@ -232,10 +232,18 @@ def demo_poly_kecil():
     )
 
 
+def val_hex(x: int, hex_width: int = 2) -> str:
+    """Satu angka ditulis ringkas: desimal + hex dalam satu string,
+    supaya tabel tidak perlu kolom dec & hex terpisah.
+    hex_width=2 untuk byte (8-bit), hex_width=8 untuk kata (32-bit)."""
+    return f"{x} (0x{x:0{hex_width}x})"
+
+
 def tabel_xor_byte(bytes_a: bytes, keystream: bytes, bytes_hasil: bytes,
                     label_a: str = "Plaintext", label_hasil: str = "Ciphertext",
                     char_from: str = "a"):
-    """Tabel perhitungan XOR per posisi byte — dec & hex ditampilkan berdampingan."""
+    """Tabel perhitungan XOR per posisi byte — dec & hex digabung satu kolom
+    per field (5 kolom total, bukan 8) supaya lebih ringkas dibaca."""
     sumber_karakter = bytes_a if char_from == "a" else bytes_hasil
     rows = []
     for i in range(len(bytes_a)):
@@ -245,16 +253,16 @@ def tabel_xor_byte(bytes_a: bytes, keystream: bytes, bytes_hasil: bytes,
         rows.append({
             "Posisi": i + 1,
             "Karakter": ch,
-            f"{label_a} (dec)": pa,
-            f"{label_a} (hex)": f"{pa:02x}",
-            "Keystream (dec)": pb,
-            "Keystream (hex)": f"{pb:02x}",
-            f"{label_hasil} (dec)": ph,
-            f"{label_hasil} (hex)": f"{ph:02x}",
+            label_a: val_hex(pa),
+            "Keystream": val_hex(pb),
+            label_hasil: val_hex(ph),
         })
     df = pd.DataFrame(rows)
     st.dataframe(df, use_container_width=True, height=min(38 * (len(rows) + 1), 420))
-    st.caption("XOR per posisi byte: angka di kolom kiri di-XOR dengan Keystream pada posisi yang sama → hasil di kolom kanan.")
+    st.caption(
+        "Format tiap angka: desimal (0xhex). XOR per posisi byte: kolom kiri "
+        "di-XOR dengan Keystream pada posisi yang sama → hasil di kolom kanan."
+    )
 
 
 # =========================================================
@@ -475,10 +483,12 @@ with tab_proses:
 
             a0, b0, c0, d0 = V["state0"][0], V["state0"][4], V["state0"][8], V["state0"][12]
             st.markdown("**Contoh 1 quarter round nyata** (mengambil posisi 0, 4, 8, 12 dari matriks di atas):")
-            st.write(f"Awal → a={hex_dec(a0)}, b={hex_dec(b0)}, c={hex_dec(c0)}, d={hex_dec(d0)}")
-            for label, a, b, c, d in quarter_round_trace(a0, b0, c0, d0):
-                st.text(label)
-                st.write(f"a={hex_dec(a)}  b={hex_dec(b)}  c={hex_dec(c)}  d={hex_dec(d)}")
+            st.caption(f"Awal: a={val_hex(a0, 8)}, b={val_hex(b0, 8)}, c={val_hex(c0, 8)}, d={val_hex(d0, 8)}")
+            qr_rows = [
+                {"Langkah": label, "a": val_hex(a, 8), "b": val_hex(b, 8), "c": val_hex(c, 8), "d": val_hex(d, 8)}
+                for label, a, b, c, d in quarter_round_trace(a0, b0, c0, d0)
+            ]
+            st.dataframe(pd.DataFrame(qr_rows), use_container_width=True)
 
             st.markdown(
                 "**Pola di atas (1 quarter round) diulang 8× untuk membentuk 1 'double round', lalu "
