@@ -1,18 +1,14 @@
 import streamlit as st
-import pandas as pd
 import hashlib
-import os
-import base64
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 
-st.set_page_config(page_title="AES-128 Kriptografi", page_icon="🔐", layout="wide")
+st.set_page_config(page_title="Modul AES-128", page_icon="🔐", layout="wide")
 
 # =========================================================
 # BAGIAN 1: TABEL & FUNGSI MANUAL AES (KHUSUS VISUALISASI)
 # =========================================================
 
-# Tabel S-Box standar AES (untuk tahap SubBytes)
 SBOX = [
     0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
     0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
@@ -33,11 +29,9 @@ SBOX = [
 ]
 
 def byte_to_matrix(data_bytes):
-    """Mengubah 16 byte menjadi matriks 4x4 (Column-major order khas AES)"""
     return [[data_bytes[r + 4 * c] for c in range(4)] for r in range(4)]
 
 def format_matrix(matrix):
-    """Menampilkan matriks 4x4 dalam format Hex"""
     res = ""
     for r in range(4):
         res += " ".join([f"{matrix[r][c]:02x}" for c in range(4)]) + "\n"
@@ -50,10 +44,6 @@ def sub_bytes(state):
     return [[SBOX[state[r][c]] for c in range(4)] for r in range(4)]
 
 def shift_rows(state):
-    # Baris 0: tidak digeser
-    # Baris 1: geser kiri 1
-    # Baris 2: geser kiri 2
-    # Baris 3: geser kiri 3
     new_state = [row[:] for row in state]
     new_state[1] = new_state[1][1:] + new_state[1][:1]
     new_state[2] = new_state[2][2:] + new_state[2][:2]
@@ -61,27 +51,12 @@ def shift_rows(state):
     return new_state
 
 # =========================================================
-# BAGIAN 1.5: HELPER EDUKASI & VISUALISASI UI
-# =========================================================
-
-def flow_diagram(items):
-    parts = []
-    for i, it in enumerate(items):
-        sub = it.get("sub", "")
-        sub_html = f'<div style="font-size:12px;color:#888;margin-top:6px;text-align:center;">{sub}</div>' if sub else ""
-        box = f'<div style="display:flex;flex-direction:column;align-items:center;max-width:150px;"><div style="background:#2b6cb0;color:#fff;border-radius:10px;padding:10px 14px;text-align:center;font-weight:600;font-size:14px;">{it["label"]}</div>{sub_html}</div>'
-        parts.append(box)
-        if i < len(items) - 1:
-            parts.append('<div style="font-size:24px;color:#aaa;padding:0 10px;align-self:center;">→</div>')
-    html = '<div style="display:flex;align-items:flex-start;justify-content:center;flex-wrap:wrap;gap:2px;padding:14px 0;">' + "".join(parts) + "</div>"
-    st.markdown(html, unsafe_allow_html=True)
-
-# =========================================================
 # BAGIAN 2: ENKRIPSI/DEKRIPSI ASLI (PyCryptodome)
 # =========================================================
 
-def get_aes_key(master_password):
-    return hashlib.md5(master_password.encode('utf-8')).digest()
+def get_aes_key(password):
+    # AES-128 mutlak butuh kunci 16-byte. Kita hash input user agar selalu pas 16-byte.
+    return hashlib.md5(password.encode('utf-8')).digest()
 
 def aes_encrypt(plaintext, password):
     key = get_aes_key(password)
@@ -89,11 +64,12 @@ def aes_encrypt(plaintext, password):
     iv = cipher.iv
     pt_padded = pad(plaintext.encode('utf-8'), AES.block_size)
     ciphertext = cipher.encrypt(pt_padded)
-    return base64.b64encode(iv + ciphertext).decode('utf-8')
+    # Output berupa Hex string (IV + Ciphertext digabung)
+    return (iv + ciphertext).hex()
 
-def aes_decrypt(ciphertext_b64, password):
+def aes_decrypt(ciphertext_hex, password):
     key = get_aes_key(password)
-    raw_data = base64.b64decode(ciphertext_b64)
+    raw_data = bytes.fromhex(ciphertext_hex)
     iv, ciphertext = raw_data[:16], raw_data[16:]
     cipher = AES.new(key, AES.MODE_CBC, iv)
     pt_padded = cipher.decrypt(ciphertext)
@@ -103,60 +79,64 @@ def aes_decrypt(ciphertext_b64, password):
 # BAGIAN 3: ANTARMUKA STREAMLIT
 # =========================================================
 
-st.title("AES-128 (Advanced Encryption Standard)")
-st.caption("Algoritma kriptografi modern (Block Cipher)")
+st.title("AES-128 Encryption & Decryption")
+st.caption("Aplikasi Standalone AES-128 dengan Visualisasi Proses Blok (Mode CBC)")
 
 with st.sidebar:
-    st.subheader("Konfigurasi Kunci Utama")
-    st.markdown("Karena ini Super Enkripsi, kita men-simulasikan 1 kunci untuk 4 menu. Master password ini akan di-*hash* dengan MD5 agar mutlak menjadi 16-byte untuk AES.")
-    master_key = st.text_input("Master Password", value="RAHASIA", type="password")
-    key_16 = get_aes_key(master_key)
-    st.markdown(f"**Key AES (16-Byte Hex):**\n`{key_16.hex()}`")
+    st.subheader("Konfigurasi Kunci (Key)")
+    st.markdown("AES-128 membutuhkan kunci tepat **16 Byte (128 bit)**. Untuk kemudahan, password yang Anda masukkan akan diproses dengan *hashing* MD5 sehingga ukurannya selalu pas 16 Byte.")
+    user_password = st.text_input("Masukkan Password", value="Rahasia123", type="password")
+    key_16 = get_aes_key(user_password)
+    st.markdown(f"**Kunci Aktual AES (Hex):**\n`{key_16.hex()}`")
 
-tab_enc, tab_dec, tab_proses = st.tabs(["Enkripsi", "Dekripsi", "Visualisasi Proses Lengkap"])
+tab_enc, tab_dec, tab_proses = st.tabs(["Enkripsi", "Dekripsi", "Visualisasi Proses Blok"])
 
 # --- TAB ENKRIPSI ---
 with tab_enc:
-    plaintext = st.text_area("Plaintext", placeholder="Masukkan pesan rahasia...")
+    st.subheader("Enkripsi Pesan")
+    plaintext = st.text_area("Plaintext", placeholder="Masukkan pesan rahasia yang ingin dienkripsi...")
     if st.button("Enkripsi Data", type="primary"):
         if not plaintext:
             st.warning("Plaintext tidak boleh kosong.")
         else:
-            hasil_b64 = aes_encrypt(plaintext, master_key)
+            hasil_hex = aes_encrypt(plaintext, user_password)
             st.success("Enkripsi Berhasil!")
-            st.markdown("**Hasil Akhir (Base64) - Kirim ini ke algoritma selanjutnya:**")
-            st.code(hasil_b64, language="text")
+            st.markdown("**Hasil Ciphertext (Hex):**")
+            st.code(hasil_hex, language="text")
+            st.caption("*Catatan: 16 byte pertama dari ciphertext ini adalah IV (Initialization Vector).*")
 
 # --- TAB DEKRIPSI ---
 with tab_dec:
-    ciphertext_in = st.text_area("Ciphertext (Base64)", placeholder="Masukkan ciphertext dari menu sebelumnya...")
+    st.subheader("Dekripsi Pesan")
+    ciphertext_in = st.text_area("Ciphertext (Hex)", placeholder="Masukkan string hex dari hasil enkripsi...")
     if st.button("Dekripsi Data", type="primary"):
         try:
-            pt = aes_decrypt(ciphertext_in, master_key)
+            pt = aes_decrypt(ciphertext_in.strip(), user_password)
             st.success("Dekripsi Berhasil!")
             st.markdown("**Plaintext hasil dekripsi:**")
             st.code(pt, language="text")
+        except ValueError:
+            st.error("Gagal dekripsi. Format Hex tidak valid, Padding salah, atau Kunci salah!")
         except Exception as e:
-            st.error(f"Gagal dekripsi. Data korup, padding salah, atau kunci salah! ({e})")
+            st.error(f"Terjadi kesalahan: {e}")
 
 # --- TAB VISUALISASI MANUAL ---
 with tab_proses:
-    st.markdown("Tab ini membedah anatomi 1 Blok AES (16 byte pertama) langkah-demi-langkah.")
+    st.markdown("Tab ini memvisualisasikan bagaimana AES memproses **16 byte pertama** (1 blok) dari pesan Anda pada tahap awal algoritma.")
     
-    msg = st.text_area("Pesan untuk divisualisasikan (maks 16 karakter)", value="Halo Dunia 123!", height=70)
-    if len(msg.encode()) > 16:
-        msg = msg.encode()[:16].decode(errors="ignore")
+    msg = st.text_area("Pesan untuk divisualisasikan (maks 16 karakter)", value="Halo AES 128 bit", height=70)
+    if len(msg.encode('utf-8')) > 16:
+        msg = msg.encode('utf-8')[:16].decode(errors="ignore")
         st.caption(f"Pesan dipotong otomatis jadi 16 byte (1 blok): \"{msg}\"")
         
-    if st.button("Jalankan Visualisasi AES"):
-        pt_bytes = pad(msg.encode(), 16)[:16]
+    if st.button("Jalankan Visualisasi 1 Blok"):
+        pt_bytes = pad(msg.encode('utf-8'), 16)[:16]
         
-        # Inisialisasi Matriks
         state_matrix = byte_to_matrix(pt_bytes)
         key_matrix = byte_to_matrix(key_16)
         
-        st.subheader("0. Persiapan Matriks (State)")
-        st.write("AES bekerja dengan menyusun 16 byte data ke dalam matriks 4x4 (dari atas ke bawah, lalu ke kanan).")
+        st.subheader("0. Persiapan Matriks (State Matrix)")
+        st.write("16 byte teks dan 16 byte kunci disusun ke dalam matriks 4x4 (dari atas ke bawah, lalu ke kanan).")
         
         c1, c2 = st.columns(2)
         with c1:
@@ -168,41 +148,31 @@ with tab_proses:
             
         st.divider()
         st.subheader("1. Initial AddRoundKey (XOR)")
-        st.write("Langkah pertama: Matriks Plaintext di-XOR dengan Matriks Kunci.")
+        st.write("Matriks Plaintext di-XOR dengan Matriks Kunci secara posisi per posisi.")
         
         state_after_ark = add_round_key(state_matrix, key_matrix)
         st.code(format_matrix(state_after_ark), language="text")
         
         st.divider()
-        st.subheader("2. Ronde 1: SubBytes (Substitusi)")
-        st.write("Setiap byte pada matriks dicocokkan dengan tabel **S-Box** AES. Proses ini memecah pola linearistik pesan (Confusion).")
+        st.subheader("2. Ronde 1: SubBytes (Substitusi S-Box)")
+        st.write("Setiap byte hasil XOR ditukar dengan nilai baru menggunakan tabel standar *S-Box* AES.")
         
         state_after_sub = sub_bytes(state_after_ark)
-        c1, c2 = st.columns(2)
-        c1.markdown("*Sebelum SubBytes:*")
-        c1.code(format_matrix(state_after_ark), language="text")
-        c2.markdown("*Sesudah SubBytes:*")
-        c2.code(format_matrix(state_after_sub), language="text")
+        c3, c4 = st.columns(2)
+        c3.markdown("*Sebelum SubBytes:*")
+        c3.code(format_matrix(state_after_ark), language="text")
+        c4.markdown("*Sesudah SubBytes:*")
+        c4.code(format_matrix(state_after_sub), language="text")
         
         st.divider()
-        st.subheader("3. Ronde 1: ShiftRows (Pergeseran)")
-        st.write("Baris pertama matriks diam. Baris ke-2 digeser ke kiri 1 langkah. Baris ke-3 digeser 2 langkah, dst. (Diffusion).")
+        st.subheader("3. Ronde 1: ShiftRows (Pergeseran Baris)")
+        st.write("Baris 1 diam. Baris 2 geser kiri 1x. Baris 3 geser kiri 2x. Baris 4 geser kiri 3x.")
         
         state_after_shift = shift_rows(state_after_sub)
-        c1, c2 = st.columns(2)
-        c1.markdown("*Sebelum ShiftRows:*")
-        c1.code(format_matrix(state_after_sub), language="text")
-        c2.markdown("*Sesudah ShiftRows:*")
-        c2.code(format_matrix(state_after_shift), language="text")
+        c5, c6 = st.columns(2)
+        c5.markdown("*Sebelum ShiftRows:*")
+        c5.code(format_matrix(state_after_sub), language="text")
+        c6.markdown("*Sesudah ShiftRows:*")
+        c6.code(format_matrix(state_after_shift), language="text")
 
-        st.divider()
-        st.subheader("4. Ronde 1: MixColumns (Perkalian Galois Field)")
-        st.warning("Perhatian: Tidak seperti algoritma klasik atau ChaCha20, tahap ini melibatkan perkalian matriks menggunakan Polinomial di Galois Field $GF(2^8)$.")
-        
-        st.write("Setiap kolom dalam state dikalikan dengan matriks polinomial konstan. Hasilnya akan mengacak data lebih jauh lagi:")
-        flow_diagram([
-            {"label": "State Kolom 1"},
-            {"label": "Matriks GF(2^8)", "sub": "Di-XOR dan dikalikan"},
-            {"label": "Kolom Teracak"}
-        ])
-        st.info("Karena ini adalah 1 ronde dari total 10 ronde, langkah SubBytes hingga AddRoundKey akan terus diulang 9 kali lagi (di kode produksi) dengan kunci yang telah di-expand.")
+        st.info("Setelah tahap ini, proses berlanjut ke MixColumns (perkalian matriks Galois Field). Siklus SubBytes -> ShiftRows -> MixColumns -> AddRoundKey ini diulang sebanyak 10 kali untuk AES-128.")
