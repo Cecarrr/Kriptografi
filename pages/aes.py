@@ -3,7 +3,7 @@ import hashlib
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 
-st.set_page_config(page_title="Modul AES-128", page_icon="🔐", layout="wide")
+st.set_page_config(page_title="Modul AES-128", layout="wide")
 
 # =========================================================
 # BAGIAN 1: TABEL & FUNGSI MANUAL AES (KHUSUS VISUALISASI)
