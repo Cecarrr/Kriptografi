@@ -2,13 +2,7 @@ import hashlib
 from Crypto.Cipher import AES, ChaCha20
 from Crypto.Util.Padding import pad, unpad
 
-<<<<<<< HEAD
-# ==========================================
-# 1. CAESAR CIPHER
-# ==========================================
-=======
 # --- 1. CAESAR CIPHER (Diseragamkan) ---
->>>>>>> 4f3a29e713494f9ddffa4feb96cdc23c949c3ed5
 def caesar_encrypt_core(text, shift):
     result = ""
     for char in text:
@@ -22,26 +16,6 @@ def caesar_encrypt_core(text, shift):
 def caesar_decrypt_core(text, shift):
     return caesar_encrypt_core(text, -shift)
 
-<<<<<<< HEAD
-# ==========================================
-# 2. RAIL FENCE CIPHER
-# ==========================================
-def fence(lst, numrails):
-    fence_grid = [[None] * len(lst) for n in range(numrails)]
-    rails = list(range(numrails - 1)) + list(range(numrails - 1, 0, -1))
-    for n, x in enumerate(lst):
-        fence_grid[rails[n % len(rails)]][n] = x
-    return [c for rail in fence_grid for c in rail if c is not None]
-
-def railfence_encrypt_core(text, key):
-    if key < 2 or not text:
-        return text
-    return "".join(fence(text, key))
-
-def railfence_decrypt_core(text, key):
-    if key < 2 or not text:
-        return text
-=======
 # --- 2. RAIL FENCE CIPHER ---
 def fence(lst, numrails):
     fence = [[None] * len(lst) for n in range(numrails)]
@@ -56,18 +30,11 @@ def railfence_encrypt_core(text, key):
 
 def railfence_decrypt_core(text, key):
     if key < 2: return text
->>>>>>> 4f3a29e713494f9ddffa4feb96cdc23c949c3ed5
     rng = range(len(text))
     pos = fence(rng, key)
     return "".join(text[pos.index(n)] for n in rng)
 
-<<<<<<< HEAD
-# ==========================================
-# 3. CHACHA20 (STREAM CIPHER MURNI)
-# ==========================================
-=======
 # --- 3. CHACHA20 (Versi PyCryptodome untuk Super Enkripsi) ---
->>>>>>> 4f3a29e713494f9ddffa4feb96cdc23c949c3ed5
 def chacha20_encrypt_core(text, key_32):
     cipher = ChaCha20.new(key=key_32)
     ciphertext = cipher.encrypt(text.encode('utf-8'))
@@ -79,13 +46,7 @@ def chacha20_decrypt_core(hex_data, key_32):
     cipher = ChaCha20.new(key=key_32, nonce=nonce)
     return cipher.decrypt(ciphertext).decode('utf-8')
 
-<<<<<<< HEAD
-# ==========================================
-# 4. AES-128 (BLOCK CIPHER)
-# ==========================================
-=======
 # --- 4. AES-128 ---
->>>>>>> 4f3a29e713494f9ddffa4feb96cdc23c949c3ed5
 def aes_encrypt_core(text, key_16):
     cipher = AES.new(key_16, AES.MODE_CBC)
     pt_padded = pad(text.encode('utf-8'), AES.block_size)
@@ -99,13 +60,7 @@ def aes_decrypt_core(hex_data, key_16):
     pt_padded = cipher.decrypt(ciphertext)
     return unpad(pt_padded, AES.block_size).decode('utf-8')
 
-<<<<<<< HEAD
-# ==========================================
-# 5. KEY DERIVATION UNTUK SUPER ENKRIPSI
-# ==========================================
-=======
 # --- KEY DERIVATION UNTUK SUPER ENKRIPSI ---
->>>>>>> 4f3a29e713494f9ddffa4feb96cdc23c949c3ed5
 def derive_keys(master_password):
     k_ca = sum(ord(c) for c in master_password) % 26
     k_rf = max(2, (len(master_password) % 8) + 2) 
